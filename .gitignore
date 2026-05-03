@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+
+# Environment variables (CRÍTICO: nunca suba suas chaves de API)
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Debug/Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+nav_*.json
