@@ -1,75 +1,64 @@
-# React + TypeScript + Vite
+# 3D LLM Navigation Agent 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An experimental prototype of an autonomous navigation agent that uses Large Language Models (LLMs) to navigate simulated 3D environments. The agent processes spatial data, avoids obstacles, and calculates the most efficient path to a target (the door) using a closed-loop feedback system.
 
-Currently, two official plugins are available:
+## Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+*   **Context-Aware Navigation**: The agent receives its coordinates and surrounding obstacle data (distance, bearing, volume) via JSON and determines the next best move.
+*   **Collision Detection Engine**: A built-in 2D geometry engine validates the agent's steps against room boundaries and objects before execution.
+*   **Dynamic Feedback Loop**: The model is informed of real-time events (such as collisions or successful steps), allowing it to adjust its strategy in the next turn.
+*   **Interactive Canvas Visualization**: A custom React interface using HTML5 Canvas to track the agent’s path, starting position, and target in real-time.
+*   **Session Data Export**: Ability to download detailed JSON logs containing inference counts, distance traveled, and collision metrics for further analysis.
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+*   **Framework**: React + TypeScript
+*   **Rendering**: HTML5 Canvas API
+*   **Styling**: Inline CSS with a "Dark Terminal" aesthetic
+*   **AI Integration**: Support for OpenRouter (GPT-4o-mini), Anthropic, and local LLMs.
 
-Note: This will impact Vite dev & build performances.
+## How It Works
 
-## Expanding the ESLint configuration
+1.  **Spatial Encoding**: The system translates the 3D scene into a structured text prompt. It calculates the `bearing` (0-359°) and `distance` for every object relative to the agent.
+2.  **LLM Reasoning**:
+    *   The agent analyzes its current state and the obstacle list.
+    *   It outputs a strictly formatted JSON response containing its `reasoning`, a series of `steps`, and a boolean `arrived` status.
+3.  **Execution & Validation**: The simulation attempts to move the agent. If a path intersects with an object's bounding box, the movement is canceled, and a "collision event" is sent back to the LLM's history.
+4.  **Completion**: The session ends when the agent reaches the arrival threshold (< 0.8m from the door) or exceeds the maximum turn limit (30).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Setup & Installation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1.  **Clone the repository**:
+    ```bash
+    git clone [https://github.com/your-username/llm-3d-navigation.git](https://github.com/your-username/llm-3d-navigation.git)
+    ```
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+3.  **Environment Variables**:
+    Create a `.env` file in the root directory and add your API keys:
+    
+```env
+    VITE_OPENROUTER_API_KEY=your_key_here
+    ```
+4.  **Run the project**:
+    ```bash
+    npm run dev
+    ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Navigation Logic
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+The agent follows a specific bearing convention to navigate the grid:
+*   **0°**: North (-z)
+*   **90°**: East (+x)
+*   **180°**: South (+z)
+*   **270°**: West (-x)
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+It is constrained to a maximum of **3 steps per turn**, with each step being exactly **0.5m**.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 📝 Author
+**Victor Hugo de S. S. Ragazzi**  
+*Graduate Student & Developer*
