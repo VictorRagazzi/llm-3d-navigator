@@ -18,7 +18,7 @@ export interface SceneObject {
   d: number;
   h: number;
   color: string;
-  isDoor?: boolean;
+  isDestiny?: boolean;
 }
 
 export interface Scene {

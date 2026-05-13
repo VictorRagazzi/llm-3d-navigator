@@ -6,14 +6,17 @@ import type { ChatMessage } from "./clients/llm_client";
 // ═══════════════════════════════════════════════════════════════════
 // BANCO DE CENAS — adicione novas cenas aqui
 // ═══════════════════════════════════════════════════════════════════
-const SCENES: Scene[] = [
+
+const IS_MOCKED = false;
+
+const MOCK_SCENES: Scene[] = [
   {
     id: "quarto_simples",
     name: "Quarto Simples",
     room: { w: 10, d: 10 },
     startPos: { x: 5.0, z: 8.5 },
     objects: [
-      { id: 1, label: "porta",   x: 5.0, z: 0.15, w: 1.0, d: 0.2,  h: 2.1,  color: "#60a5fa", isDoor: true },
+      { id: 1, label: "porta",   x: 5.0, z: 0.15, w: 1.0, d: 0.2,  h: 2.1,  color: "#60a5fa", isDestiny: true },
       { id: 2, label: "mesa",    x: 3.0, z: 4.0,  w: 1.2, d: 0.8,  h: 0.75, color: "#f59e0b" },
       { id: 3, label: "cadeira", x: 2.0, z: 5.5,  w: 0.6, d: 0.6,  h: 0.9,  color: "#a78bfa" },
       { id: 4, label: "sofá",    x: 7.5, z: 6.5,  w: 2.0, d: 0.9,  h: 0.85, color: "#34d399" },
@@ -28,7 +31,7 @@ const SCENES: Scene[] = [
     room: { w: 12, d: 8 },
     startPos: { x: 10.0, z: 6.5 },
     objects: [
-      { id: 1, label: "porta",       x: 0.15, z: 4.0, w: 0.2, d: 1.0,  h: 2.1,  color: "#60a5fa", isDoor: true },
+      { id: 1, label: "porta",       x: 0.15, z: 4.0, w: 0.2, d: 1.0,  h: 2.1,  color: "#60a5fa", isDestiny: true },
       { id: 2, label: "sofá",        x: 8.5,  z: 5.5, w: 2.5, d: 1.0,  h: 0.85, color: "#34d399" },
       { id: 3, label: "mesa center", x: 6.0,  z: 4.5, w: 1.4, d: 0.8,  h: 0.75, color: "#f59e0b" },
       { id: 4, label: "tv stand",    x: 2.0,  z: 1.5, w: 1.8, d: 0.5,  h: 0.6,  color: "#94a3b8" },
@@ -43,7 +46,7 @@ const SCENES: Scene[] = [
     room: { w: 8, d: 8 },
     startPos: { x: 6.5, z: 6.5 },
     objects: [
-      { id: 1, label: "porta",       x: 4.0, z: 0.15, w: 0.9, d: 0.2,  h: 2.1,  color: "#60a5fa", isDoor: true },
+      { id: 1, label: "porta",       x: 4.0, z: 0.15, w: 0.9, d: 0.2,  h: 2.1,  color: "#60a5fa", isDestiny: true },
       { id: 2, label: "mesa work",   x: 2.0, z: 2.5,  w: 1.6, d: 0.8,  h: 0.75, color: "#f59e0b" },
       { id: 3, label: "cadeira 1",   x: 2.0, z: 3.7,  w: 0.6, d: 0.6,  h: 0.9,  color: "#a78bfa" },
       { id: 4, label: "mesa work 2", x: 5.5, z: 2.5,  w: 1.6, d: 0.8,  h: 0.75, color: "#f59e0b" },
@@ -52,8 +55,38 @@ const SCENES: Scene[] = [
       { id: 7, label: "impressora",  x: 6.5, z: 5.0,  w: 0.5, d: 0.4,  h: 0.4,  color: "#64748b" },
       { id: 8, label: "planta",      x: 7.2, z: 1.0,  w: 0.4, d: 0.4,  h: 1.2,  color: "#4ade80" },
     ],
-  },
+  },{
+    id: "537238e9",
+    name: "Processed Scene",
+    room: {  w: 3.05, d: 1.24 },
+    startPos: { x: 0.15, z: 0.06 },
+    objects: [
+      { id: 1, label: "chair",        x: 0.87,  z: 0.33,  w: 0.28, d: 0.56, h: 1.1, color: "#E63946"},
+      { id: 2, label: "object",       x: 0.41,  z: 0.96,  w: 0.47,  d: 0.24,   h: 1.29,    color: "#457B9D" },
+      { id: 3, label: "small_object", x: 0.59,  z: -0.2,  w: 0.12,  d: 0.08,   h: 0.91,    color: "#2A9D8F" },
+      { id: 4, label: "chair",        x: 2.56,  z: -0.02, w: 0.97,  d: 0.65,   h: 0.3,    color: "#E9C46A" },
+      { id: 5, label: "small_object", x: -0.14, z: 1.14,  w: 0.2,  d: 0.22,   h: 0.49,    color: "#F4A261" },
+      { id: 6, label: "small_object", x: -0.04, z: 0.74,  w: 0.09,  d: 0.34,   h: 0.68,    color: "#264653" },
+      { id: 7, label: "chair",        x: 1.62,  z: -0.05, w: 0.68,  d: 0.76,   h: 0.64,    color: "#A8DADC", "isDestiny": true },
+      { id: 8, label: "small_object", x: 2.62,  z: 0.12,  w: 0.27,  d: 0.09,   h: 0.24,    color: "#6A4C93"}
+    ]
+  }
 ];
+
+function loadRealScenes(): Scene[] {
+  // Usando o caminho relativo direto do src
+  const sceneFiles = import.meta.glob('./scenes/*.json', { eager: true });
+  
+  const scenes = Object.values(sceneFiles).map((module: any) => {
+    // Se o Vite importar como um módulo ES, o conteúdo estará em .default
+    // Se for direto, o próprio module é o objeto.
+    return (module.default ? module.default : module) as Scene;
+  });
+
+  return scenes;
+}
+
+const SCENES: Scene[] = (IS_MOCKED ? MOCK_SCENES : loadRealScenes()) || [];
 
 // ═══════════════════════════════════════════════════════════════════
 // CONSTANTES
@@ -96,7 +129,7 @@ function checkCollision(pos: { x: number; z: number }, scene: typeof SCENES[0]) 
   if (pos.x < m || pos.x > room.w - m || pos.z < m || pos.z > room.d - m)
     return { hit: true, what: "parede" };
   for (const o of objects) {
-    if (o.isDoor) continue;
+    if (o.isDestiny) continue;
     if (
       pos.x > o.x - o.w / 2 - m && pos.x < o.x + o.w / 2 + m &&
       pos.z > o.z - o.d / 2 - m && pos.z < o.z + o.d / 2 + m
@@ -109,10 +142,10 @@ function checkCollision(pos: { x: number; z: number }, scene: typeof SCENES[0]) 
 // CONTEXTO + PROMPT
 // ═══════════════════════════════════════════════════════════════════
 function buildContext(agentPos: { x: number; z: number }, scene: typeof SCENES[0]) {
-  const door = scene.objects.find(o => o.isDoor);
+  const door = scene.objects.find(o => o.isDestiny);
   if (!door) throw new Error("No door found in scene");
   const objs = scene.objects
-    .filter(o => !o.isDoor)
+    .filter(o => !o.isDestiny)
     .map(o => ({
       label: o.label,
       distancia: dist2D(agentPos, o).toFixed(1),
@@ -223,14 +256,14 @@ function SceneCanvas({ agentPos, path, scene }: CanvasProps) {
     for (const obj of scene.objects) {
       const { cx, cy } = tc(obj.x - obj.w / 2, obj.z - obj.d / 2);
       const pw = obj.w * scale, pd = obj.d * scale;
-      ctx.fillStyle = obj.isDoor ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.04)";
+      ctx.fillStyle = obj.isDestiny ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.04)";
       ctx.fillRect(cx, cy, pw, pd);
       ctx.strokeStyle = obj.color;
-      ctx.lineWidth = obj.isDoor ? 2.5 : 1.5;
+      ctx.lineWidth = obj.isDestiny ? 2.5 : 1.5;
       ctx.strokeRect(cx, cy, pw, pd);
       const fs = Math.max(8, Math.min(11, scale * 0.2));
-      ctx.font = `${obj.isDoor ? "bold " : ""}${fs}px monospace`;
-      ctx.fillStyle = obj.isDoor ? "#93c5fd" : "rgba(255,255,255,0.45)";
+      ctx.font = `${obj.isDestiny ? "bold " : ""}${fs}px monospace`;
+      ctx.fillStyle = obj.isDestiny ? "#93c5fd" : "rgba(255,255,255,0.45)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(obj.label, cx + pw / 2, cy + pd / 2);
@@ -380,7 +413,7 @@ export default function App() {
   const [turn, setTurn] = useState(0);
 
   const scene = SCENES[sceneIdx];
-  const door  = scene.objects.find(o => o.isDoor)!;
+  const door  = scene.objects.find(o => o.isDestiny)!;
 
   // Histórico acumulado da conversa — persiste entre turnos da mesma sessão
   const historyRef  = useRef<ChatMessage[]>([]);

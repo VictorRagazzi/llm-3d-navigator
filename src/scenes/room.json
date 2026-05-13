@@ -1,0 +1,223 @@
+{
+  "id": "bf60b217",
+  "name": "Processed Scene",
+  "room": {
+    "w": 3.79,
+    "d": 3.07
+  },
+  "startPos": {
+    "x": 0.19,
+    "z": 0.15
+  },
+  "objects": [
+    {
+      "id": 1,
+      "label": "table",
+      "x": 0.91,
+      "z": -0.07,
+      "w": 1.29,
+      "d": 0.27,
+      "h": 1.28,
+      "color": "#E63946",
+      "isDestiny": false
+    },
+    {
+      "id": 2,
+      "label": "furniture",
+      "x": -0.42,
+      "z": 1.22,
+      "w": 1.06,
+      "d": 1.25,
+      "h": 1.29,
+      "color": "#457B9D",
+      "isDestiny": false
+    },
+    {
+      "id": 3,
+      "label": "small_object",
+      "x": 2.59,
+      "z": 0.3,
+      "w": 0.52,
+      "d": 0.15,
+      "h": 0.53,
+      "color": "#2A9D8F",
+      "isDestiny": false
+    },
+    {
+      "id": 4,
+      "label": "sofa",
+      "x": 1.27,
+      "z": 1.59,
+      "w": 1.52,
+      "d": 2.14,
+      "h": 0.9,
+      "color": "#E9C46A",
+      "isDestiny": true
+    },
+    {
+      "id": 5,
+      "label": "furniture",
+      "x": 0.64,
+      "z": 1.58,
+      "w": 0.99,
+      "d": 2.14,
+      "h": 0.53,
+      "color": "#F4A261",
+      "isDestiny": false
+    },
+    {
+      "id": 6,
+      "label": "furniture",
+      "x": -0.29,
+      "z": 1.6,
+      "w": 0.56,
+      "d": 2.14,
+      "h": 0.84,
+      "color": "#264653",
+      "isDestiny": false
+    },
+    {
+      "id": 7,
+      "label": "furniture",
+      "x": 0.7,
+      "z": 0.36,
+      "w": 1.48,
+      "d": 0.39,
+      "h": 2.36,
+      "color": "#A8DADC",
+      "isDestiny": false
+    },
+    {
+      "id": 8,
+      "label": "chair",
+      "x": 1.99,
+      "z": -0.08,
+      "w": 1.13,
+      "d": 0.26,
+      "h": 1.08,
+      "color": "#6A4C93",
+      "isDestiny": false
+    },
+    {
+      "id": 9,
+      "label": "table",
+      "x": 2.06,
+      "z": 0.34,
+      "w": 1.0,
+      "d": 0.37,
+      "h": 1.13,
+      "color": "#52B788",
+      "isDestiny": false
+    },
+    {
+      "id": 10,
+      "label": "chair",
+      "x": 0.48,
+      "z": 0.91,
+      "w": 1.22,
+      "d": 0.33,
+      "h": 0.88,
+      "color": "#F77F00",
+      "isDestiny": false
+    },
+    {
+      "id": 11,
+      "label": "small_object",
+      "x": 1.82,
+      "z": 0.31,
+      "w": 0.44,
+      "d": 0.11,
+      "h": 0.23,
+      "color": "#D62828",
+      "isDestiny": false
+    },
+    {
+      "id": 12,
+      "label": "object",
+      "x": 2.25,
+      "z": 0.91,
+      "w": 0.67,
+      "d": 0.4,
+      "h": 0.53,
+      "color": "#023E8A",
+      "isDestiny": false
+    },
+    {
+      "id": 13,
+      "label": "chair",
+      "x": 1.77,
+      "z": 1.07,
+      "w": 0.63,
+      "d": 1.02,
+      "h": 0.38,
+      "color": "#80B918",
+      "isDestiny": false
+    },
+    {
+      "id": 14,
+      "label": "chair",
+      "x": 2.24,
+      "z": 1.32,
+      "w": 0.8,
+      "d": 0.41,
+      "h": 0.53,
+      "color": "#FF6B6B",
+      "isDestiny": false
+    },
+    {
+      "id": 15,
+      "label": "small_object",
+      "x": 0.27,
+      "z": 2.14,
+      "w": 0.16,
+      "d": 0.26,
+      "h": 0.15,
+      "color": "#4ECDC4",
+      "isDestiny": false
+    },
+    {
+      "id": 16,
+      "label": "small_object",
+      "x": 1.74,
+      "z": 2.91,
+      "w": 0.29,
+      "d": 0.09,
+      "h": 0.2,
+      "color": "#E63946",
+      "isDestiny": false
+    },
+    {
+      "id": 17,
+      "label": "small_object",
+      "x": 0.03,
+      "z": 2.5,
+      "w": 0.16,
+      "d": 0.57,
+      "h": 0.21,
+      "color": "#457B9D",
+      "isDestiny": false
+    },
+    {
+      "id": 18,
+      "label": "small_object",
+      "x": -0.06,
+      "z": 1.92,
+      "w": 0.25,
+      "d": 0.28,
+      "h": 0.15,
+      "color": "#2A9D8F",
+      "isDestiny": false
+    },
+    {
+      "id": 19,
+      "label": "small_object",
+      "x": 3.58,
+      "z": 1.84,
+      "w": 0.19,
+      "d": 0.19,
+      "h": 0.31,
+      "color": "#E9C46A",
+      "isDestiny": false
+    }
+  ]
+}
