@@ -136,25 +136,34 @@ export function buildInitialMessages(systemPrompt: string): ChatMessage[] {
 
 /** Monta a mensagem de feedback do turno para ser anexada ao histórico */
 export function buildTurnFeedback(
-  turnNumber: number,
-  stepsExecuted: Array<{ angle: number; distance: number }>,
-  newPos: { x: number; z: number },
-  collisions: Array<{ angle: number; what: string }>,
-  doorDist: string,
+  turn: number,
+  executedSteps: Array<{ angle: number; distance: number }>,
+  finalPos: { x: number; z: number },
+  collisionEvents: Array<{ angle: number; what: string }>,
+  distToDoor: string,
+  plannedReasoning?: string,   // ← novo parâmetro
 ): string {
-  const stepsDesc = stepsExecuted
-    .map((s, i) => `  Step ${i + 1}: angle ${s.angle}°, distance ${s.distance}m`)
-    .join("\n");
+  const parts: string[] = [
+    `## Turn ${turn} Result`,
+    `- New position: x=${finalPos.x.toFixed(2)}, z=${finalPos.z.toFixed(2)}`,
+    `- Distance to door: ${distToDoor}m`,
+    `- Steps executed: ${executedSteps.length}`,
+  ];
 
-  const collisionDesc = collisions.length > 0
-    ? `\nCollisions blocked:\n${collisions.map(c => `  - angle ${c.angle}° → hit "${c.what}"`).join("\n")}`
-    : "\nNo collisions this turn.";
+  if (executedSteps.length > 0) {
+    parts.push(`- Executed: ${executedSteps.map(s => `${s.angle}°/${s.distance.toFixed(1)}m`).join(", ")}`);
+  }
 
-  return `Turn ${turnNumber} result:
-New position: x=${newPos.x.toFixed(2)}, z=${newPos.z.toFixed(2)}
-Steps executed:
-${stepsDesc}${collisionDesc}
-Distance to door: ${doorDist}m
+  if (collisionEvents.length > 0) {
+    parts.push(`- ⚠️ Collisions blocked: ${collisionEvents.map(c => `${c.angle}° hit "${c.what}"`).join(", ")}`);
+    if (plannedReasoning) {
+      parts.push(`- Your plan was: "${plannedReasoning}"`);
+      parts.push(`- That plan FAILED — the obstacle was not avoided. Revise your strategy.`);
+    }
+  } else if (plannedReasoning) {
+    parts.push(`- Your plan was: "${plannedReasoning}" — executed successfully.`);
+  }
 
-Now provide your next move.`;
+  parts.push(`\nContinue navigating. Respond with the next JSON move.`);
+  return parts.join("\n");
 }
