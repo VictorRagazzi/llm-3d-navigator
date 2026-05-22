@@ -1,16 +1,8 @@
 import axios from 'axios';
-import type { LLMResponse } from '../types';
+import type { LLMResponse, QueryOptions, LLMProvider } from '../types';
 
-export type LLMProvider = "local" | "openrouter" | "anthropic";
+
 export type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
-
-interface QueryOptions {
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-  maxRetries?: number;
-  timeout?: number;
-}
 
 export async function queryLLM(
   messages: ChatMessage[],
