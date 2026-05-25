@@ -1,5 +1,5 @@
 import type { Point, Scene, WaypointNavState } from "../types";
-import { dist2D, stepFromAngle, checkCollision } from '../utils/polygons'
+import { dist2D, stepFromAngle, checkCollisionSweep } from '../utils/polygons'
 
 // ═══════════════════════════════════════════════════════════════════
 // STUCK DETECTION
@@ -31,7 +31,7 @@ export function buildStuckWarning(state: WaypointNavState, agentPos: Point, scen
   const escapeAngles = [0, 45, 90, 135, 180, 225, 270, 315].filter(deg => {
     if (state.stuckAnglesTriedDeg.includes(deg)) return false;
     const next = stepFromAngle(agentPos, deg, stepSize);
-    return !checkCollision(next, scene, agentRadius).hit;
+    return !checkCollisionSweep(agentPos, next, scene, agentRadius).hit;
   });
  
   const tried = state.stuckAnglesTriedDeg.length > 0

@@ -1,6 +1,4 @@
 import type { Scene, NavParams } from "../types";
-// import { dist2D, angleToTarget } from '../utils/polygons'
-// import { getCurrentWaypoint } from '../prompt/waypoints'
 // import { buildStuckWarning } from '../prompt/stuck_detection'
 import { buildContext, buildDirectionScan, buildAsciiMap } from '../prompt/context'
 
@@ -28,7 +26,7 @@ export function buildPrompt(ctx: ReturnType<typeof buildContext>, scene: Scene, 
     `## Obstacles (nearest → farthest)\n${lines}`,
 
     `## Movement Rules
-        1. You HAVE to take up ${params.AGENT_RADIUS} steps per turn; each step is exactly ${params.STEP_SIZE}m.
+        1. You HAVE to take up ${params.MAX_STEPS_PER_TURN} steps per turn; each step is exactly ${params.STEP_SIZE}m.
         2. A step that would collide with any obstacle or wall is INVALID and will be discarded.
         3. If the door is within ${params.ARRIVAL_THRESHOLD}m, set \`arrived\` to true immediately.
         4. Always prefer the shortest collision-free path to the door.
