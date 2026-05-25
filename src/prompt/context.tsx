@@ -39,40 +39,45 @@ export function buildAsciiMap(agentPos: Point, scene: Scene, gridSize = 20): str
  
   const clamp = (v: number) => Math.max(0, Math.min(gridSize - 1, v));
  
-  // Obstacles e porta
+  // 1. Plot Obstacles and Door
   for (const obj of objects) {
     const ch = obj.isDestiny ? "D" : "█";
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         const wx = (c / (gridSize - 1)) * room.w;
         const wz = (r / (gridSize - 1)) * room.d;
+        // Assuming pointInPolygon is available in this scope
         if (pointInPolygon(wx, wz, obj.footprint)) grid[r][c] = ch;
       }
     }
   }
-
  
-  // Agente
+  // 2. Plot Agent
   const agentCol = clamp(Math.round((agentPos.x / room.w) * (gridSize - 1)));
   const agentRow = clamp(Math.round((agentPos.z / room.d) * (gridSize - 1)));
   grid[agentRow][agentCol] = "A";
  
+  // 3. Build rows with Z-axis labels (Left side)
   const rows = grid.map((row, i) => {
     const zLabel = ((i / (gridSize - 1)) * room.d).toFixed(1).padStart(4);
-    return `${zLabel}│${row.join("")}│`;
+    return `${zLabel} │${row.join("")}│`;
   });
  
-  const xLabels = Array.from({ length: gridSize }, (_, i) =>
-    ((i / (gridSize - 1)) * room.w).toFixed(0).padStart(1)
-  ).join("");
+  // 4. Build X-axis labels (Bottom)
+  // We use modulo 10 so numbers >= 10 don't break the 1-character-per-column spacing.
+  const xLabels = Array.from({ length: gridSize }, (_, i) => {
+    const val = Math.round((i / (gridSize - 1)) * room.w);
+    return (val % 10).toString();
+  }).join("");
  
+  // 5. Assemble final ASCII map
   return [
-    `     ╔${"═".repeat(gridSize)}╗`,
-    ...rows.map((r, i) => (i === 0 ? `  N  │${grid[0].join("")}│` : r)),
-    `     ╚${"═".repeat(gridSize)}╝`,
-    `      ${xLabels}`,
-    `      W (x=0) → E (x=${room.w})  |  N (z=0) → S (z=${room.d})`,
-    `Legend: A=agent  D=door  W=next waypoint  w=future wp  ✓=done  █=obstacle  ·=free`,
+    `       ╔${"═".repeat(gridSize)}╗`,
+    ...rows, // Removed the map() that was destroying the first row's label
+    `       ╚${"═".repeat(gridSize)}╝`,
+    `        ${xLabels}`,
+    `        W (x=0) → E (x=${room.w})  |  N (z=0) → S (z=${room.d})`,
+    `Legend: A=agent  D=door  █=obstacle  ·=free`, // Removed waypoints to avoid confusing the LLM
   ].join("\n");
 }
  

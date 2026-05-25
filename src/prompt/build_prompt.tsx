@@ -1,46 +1,100 @@
 import type { Scene, NavParams } from "../types";
-// import { buildStuckWarning } from '../prompt/stuck_detection'
-import { buildContext, buildDirectionScan, buildAsciiMap } from '../prompt/context'
+import { buildContext, buildDirectionScan } from '../prompt/context';
 
-export function buildPrompt(ctx: ReturnType<typeof buildContext>, scene: Scene, params: NavParams) {
-  // ALTERAÇÃO 4 — objetos descritos pelos cantos do footprint, não por centro+dims
-  const lines = ctx.objs
-    .map(o =>
-      `  - ${o.label}: dist ${o.distancia}m | bearing ${o.direcao}° | h ${o.h}m | corners ${o.corners}`
-    )
-    .join("\n");
+// ═══════════════════════════════════════════════════════════════════
+// PROMPT BUILDER — A*-guided navigation
+// ═══════════════════════════════════════════════════════════════════
 
-  const sections = [
-    `You are an autonomous navigation agent operating inside a ${scene.room.w}x${scene.room.d}m room.`,
-    `Your ONLY goal is to reach the door as efficiently as possible while avoiding all obstacles.`,
+export interface WaypointContext {
+  /** The immediate next waypoint the agent should walk toward. */
+  nextWaypoint: { x: number; z: number };
+  /** How far the next waypoint is from the agent. */
+  distToNext: number;
+  /** The angle toward the next waypoint, in degrees (0 = North). */
+  angleToNext: number;
+  /** Total remaining waypoints after this one. */
+  remainingCount: number;
+  /** Brief look-ahead: coordinates of the waypoint after next, if any. */
+  lookAhead?: { x: number; z: number };
+}
 
-    `## Current State
-      - Position : x=${ctx.agentPos.x.toFixed(2)}, z=${ctx.agentPos.z.toFixed(2)}
-      - Target   : Door — bearing ${ctx.doorAngle}°, distance ${ctx.doorDist}m`,
+export function buildPrompt(
+  ctx: ReturnType<typeof buildContext>,
+  scene: Scene,
+  params: NavParams,
+  stuckWarningStr?: string,
+  previousFeedback?: string | null,
+  waypointCtx?: WaypointContext | null,
+) {
+  const scanStr = buildDirectionScan(ctx.agentPos, scene, params);
 
-    `Map Draw: \n ${buildAsciiMap(ctx.agentPos, scene, 30)}`,
+  // ── Waypoint guidance block ──────────────────────────────────────
+  let waypointBlock = "";
+  if (waypointCtx) {
+    const ahead = waypointCtx.lookAhead
+      ? `\n- Look-ahead (waypoint after next): x=${waypointCtx.lookAhead.x.toFixed(2)}, z=${waypointCtx.lookAhead.z.toFixed(2)}`
+      : "";
+    waypointBlock = [
+      `## Planned Route (A* computed — follow it)`,
+      `The shortest collision-free path has already been computed for you.`,
+      `- **Immediate target waypoint**: x=${waypointCtx.nextWaypoint.x.toFixed(2)}, z=${waypointCtx.nextWaypoint.z.toFixed(2)}`,
+      `- Distance to it: ${waypointCtx.distToNext.toFixed(2)}m`,
+      `- Bearing to it: ${waypointCtx.angleToNext}°`,
+      `- Remaining waypoints after this: ${waypointCtx.remainingCount}`,
+      ahead,
+      ``,
+      `Walk toward the immediate target waypoint. Use the bearing above as your primary direction.`,
+      `Only deviate if that direction is BLOCKED in the radar scan below.`,
+    ].join("\n");
+  }
 
-    `## Bearing Convention
-        0° = North (−z), 90° = East (+x), 180° = South (+z), 270° = West (−x)`,
+  const sections: string[] = [
+    `You are an AI navigation agent moving through a 2D room.`,
 
-    `## Obstacles (nearest → farthest)\n${lines}`,
+    `## Current Position`,
+    `x=${ctx.agentPos.x.toFixed(2)}, z=${ctx.agentPos.z.toFixed(2)}`,
+    `Final destination (Door): x=${ctx.doorCenter.x.toFixed(2)}, z=${ctx.doorCenter.z.toFixed(2)} — ${ctx.doorDist}m away at ${ctx.doorAngle}°`,
 
-    `## Movement Rules
-        1. You HAVE to take up ${params.MAX_STEPS_PER_TURN} steps per turn; each step is exactly ${params.STEP_SIZE}m.
-        2. A step that would collide with any obstacle or wall is INVALID and will be discarded.
-        3. If the door is within ${params.ARRIVAL_THRESHOLD}m, set \`arrived\` to true immediately.
-        4. Always prefer the shortest collision-free path to the door.
-        5. When an obstacle blocks the direct path, choose the side that minimises total detour.`,
+    waypointBlock || [
+      `## Final Destination`,
+      `Bearing: ${ctx.doorAngle}°, Distance: ${ctx.doorDist}m`,
+      `Navigate toward it while avoiding obstacles.`,
+    ].join("\n"),
 
-    `## Direction Scans\n\`\`\`\n${buildDirectionScan(ctx.agentPos, scene, params)}\n\`\`\``,
+    `## Immediate Surroundings — Radar Scan`,
+    `This scan tells you exactly what happens if you move ${params.STEP_SIZE}m in each direction.`,
+    `**You MUST pick a direction marked "free". Never choose BLOCKED directions.**`,
+    `\`\`\``,
+    scanStr,
+    `\`\`\``,
 
-    `## Output — strict JSON, no markdown, no extra text
-      {
-        "reasoning": "concise explanation of chosen strategy",
-        "steps": [{ "angle": <degrees 0–359>, "distance": <meters, max ${params.STEP_SIZE}> }],
-        "arrived": false
-      }`
-  ];
+    `## Instructions`,
+    `1. Check the radar scan. Note which directions are free.`,
+    `2. ${waypointCtx
+      ? `Move toward the bearing ${waypointCtx.angleToNext}° (nearest free angle is fine).`
+      : `Move toward the door bearing ${ctx.doorAngle}° (nearest free angle).`}`,
+    `3. You must provide UP TO EXACTLY ${params.MAX_STEPS_PER_TURN} steps in your array. Each step angle MUST be one of: 0, 45, 90, 135, 180, 225, 270, 315.`,
+    `4. If you are within ${params.ARRIVAL_THRESHOLD}m of the final door, set "arrived": true.`,
 
-  return sections.filter(Boolean).join("\n\n");
+    `## Output — strict JSON only, no markdown`,
+    `{`,
+    `  "reasoning": "one sentence explaining your choice",`,
+    `  "steps": [{ "angle": <0|45|90|135|180|225|270|315>, "distance": ${params.STEP_SIZE} }],`,
+    `  "arrived": <boolean>`,
+    `}`,
+
+    previousFeedback
+      ? `## Last Turn Feedback\n${previousFeedback}`
+      : "",
+  ].filter(Boolean);
+
+  if (stuckWarningStr) {
+    sections.push(
+      `## ⚠️ STUCK — You have not made progress for several turns`,
+      stuckWarningStr,
+      `Pick one of the "Free escape angles" above. Do NOT repeat the direction you just tried.`,
+    );
+  }
+
+  return sections.join("\n\n");
 }

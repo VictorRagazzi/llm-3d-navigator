@@ -26,7 +26,7 @@ const MOCK_SCENES: Scene[] = [
     id: "living_room_corridor",
     name: "Living Room with Corridor",
     room: { w: 12, d: 8 },
-    startPos: { x: 10.0, z: 6.5 },
+    startPos: { x: 10.0, z: 4.25 },
     objects: [
       { id: 1, label: "door",         footprint: [[0.05,3.5],[0.25,3.5],[0.25,4.5],[0.05,4.5]], h: 2.1,  color: "#60a5fa", isDestiny: true },
       { id: 2, label: "sofa",         footprint: [[7.25,5.0],[9.75,5.0],[9.75,6.0],[7.25,6.0]], h: 0.85, color: "#34d399" },
@@ -41,7 +41,7 @@ const MOCK_SCENES: Scene[] = [
     id: "office",
     name: "Crowded Office",
     room: { w: 8, d: 8 },
-    startPos: { x: 6.5, z: 6.5 },
+    startPos: { x: 0.5, z: 7.5 },
     objects: [
       { id: 1, label: "door",        footprint: [[3.55,0.05],[4.45,0.05],[4.45,0.25],[3.55,0.25]], h: 2.1,  color: "#60a5fa", isDestiny: true },
       { id: 2, label: "work desk",   footprint: [[1.2,2.1],[2.8,2.1],[2.8,2.9],[1.2,2.9]],        h: 0.75, color: "#f59e0b" },
@@ -58,21 +58,6 @@ const MOCK_SCENES: Scene[] = [
     name: "Single-Story House",
     room: { w: 16, d: 12 },
     startPos: { x: 13.0, z: 5.0 },
-    waypoints: [
-      // {
-      //   id: "wp_corridor_passage",
-      //   label: "corridor passage (bedroom exit)",
-      //   x: 9.6, z: 8.0,
-      //   radius: 0.8,
-      //   hint: "Go south until z≈8, then turn west toward the wall opening at x=10.",
-      // },{
-      //   id: "wp_coffe_table",
-      //   label: "coffe table (close to destiny)",
-      //   x: 3.75, z: 6.5,
-      //   radius: 0.8,
-      //   hint: "Go west until x≈4 while, then turn nort to find the coffe table.",
-      // }
-    ],
     objects: [
 
 
@@ -114,36 +99,6 @@ const MOCK_SCENES: Scene[] = [
     name: "Compact Apartment",
     room: { w: 14, d: 10 },
     startPos: { x: 11.0, z: 3.5 },
-    // waypoints: [
-    //   {
-    //     id: "wp_bedroom_passage",
-    //     label: "bedroom to corridor passage",
-    //     x: 8.0, z: 6.0,
-    //     radius: 0.8,
-    //     hint: "Go south until z≈6 and continue west through the wall opening at x=8 (between z=5 and z=7).",
-    //   },
-    //   {
-    //     id: "wp_dining_room",
-    //     label: "center of the dining room",
-    //     x: 3.5, z: 7.5,
-    //     radius: 1.0,
-    //     hint: "After crossing the wall at x=8, turn west. Avoid the dining table.",
-    //   },
-    //   {
-    //     id: "wp_room_passage",
-    //     label: "passage between dining room and living room",
-    //     x: 7.0, z: 5.0,
-    //     radius: 0.8,
-    //     hint: "The opening is at x=6..8, z=5. Turn north after crossing it.",
-    //   },
-    //   {
-    //     id: "wp_living_room_center",
-    //     label: "center of the living room",
-    //     x: 3.5, z: 2.5,
-    //     radius: 1.2,
-    //     hint: "Continue north through the living room. The destination door is on the north wall.",
-    //   },
-    // ],
     objects: [
       { id:  1, label: "front door", footprint: [[5.0,0.05],[7.0,0.05],[7.0,0.25],[5.0,0.25]], h: 2.1, color: "#60a5fa", isDestiny: true },
  
