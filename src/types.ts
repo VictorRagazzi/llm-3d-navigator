@@ -1,15 +1,41 @@
 // ═══════════════════════════════════════════════════════════════════
-// TYPES — Alteração 3: SceneObject usa footprint em vez de x,z,w,d
+// TYPES
 // ═══════════════════════════════════════════════════════════════════
 
-
-
-export interface LLMResponse {
-  reasoning: string;
-  steps: Array<{ angle: number; distance: number }>;
-  arrived: boolean;
+export interface Point {
+  x: number;
+  z: number;
 }
 
+export interface Waypoint {
+  id: string;
+  label: string;
+  x: number;
+  z: number;
+  radius?: number;
+  hint?: string;
+}
+
+export interface SceneObject {
+  id: number;
+  label: string;
+  footprint: [number, number][];
+  h: number;
+  color: string;
+  isHidden: boolean;
+  isDestiny?: boolean;
+}
+
+export interface Scene {
+  id: string;
+  name: string;
+  room: { w: number; d: number };
+  startPos: Point;
+  objects: SceneObject[];
+  waypoints?: Waypoint[];
+}
+
+// Single canonical LogEntry — has both `text` (used in App) and optional `msg`
 export interface LogEntry {
   id: number;
   type: string;
@@ -38,67 +64,15 @@ export interface SummaryCardProps {
   onExport: () => void;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// TYPES — Alteração 3: SceneObject usa footprint em vez de x,z,w,d
-// ═══════════════════════════════════════════════════════════════════
-
-export interface Point {
-  x: number;
-  z: number;
-}
- 
-export interface Waypoint {
-  id: string;
-  label: string;         // nome semântico ("passagem corredor", "centro da cozinha")
-  x: number;
-  z: number;
-  radius?: number;       // distância de chegada (default: WAYPOINT_ARRIVAL_RADIUS)
-  hint?: string;         // dica extra para o LLM nesse trecho ("vire à esquerda após o sofá")
-}
- 
-export interface SceneObject {
-  id: number;
-  label: string;
-  footprint: [number, number][];
-  h: number;
-  color: string;
-  isDestiny?: boolean;
-}
- 
-export interface Scene {
-  id: string;
-  name: string;
-  room: { w: number; d: number };
-  startPos: Point;
-  objects: SceneObject[];
-  waypoints?: Waypoint[];  // ← NOVO: opcional, cenas pequenas não precisam
-}
- 
-export interface LogEntry {
-  type: string;
-  msg?: string;
-  turn?: number;
-}
- 
-export interface Metrics {
-  success: boolean;
-  inferences: number;
-  turns: number;
-  steps: number;
-  distance: number;
-  collisionsAvoided: number;
-  finalDist: number;
-}
- 
-// ─── Estado de navegação por waypoints ───────────────────────────
+// ─── Waypoint nav state ───────────────────────────────────────────
 export interface WaypointNavState {
   waypoints: Waypoint[];
-  currentIndex: number;         // índice do waypoint ativo
-  completedIds: string[];       // histórico de waypoints concluídos
-  stuckCounter: number;         // turnos sem progresso significativo
-  lastPos: Point;               // posição no turno anterior (para stuck detection)
-  lastDistToTarget: number;     // distância ao alvo no turno anterior
-  stuckAnglesTriedDeg: number[]; // ângulos já tentados ao escapar de stuck
+  currentIndex: number;
+  completedIds: string[];
+  stuckCounter: number;
+  lastPos: Point;
+  lastDistToTarget: number;
+  stuckAnglesTriedDeg: number[];
 }
 
 export interface NavParams {
@@ -124,4 +98,10 @@ export interface QueryOptions {
   maxTokens?: number;
   maxRetries?: number;
   timeout?: number;
+}
+
+export interface LLMResponse {
+  reasoning: string;
+  steps: Array<{ angle: number; distance: number }>;
+  arrived: boolean;
 }

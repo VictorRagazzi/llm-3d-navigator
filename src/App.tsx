@@ -19,7 +19,7 @@ import { angleToTarget } from "./utils/polygons";
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════
 const STEP_SIZE               = 0.5;
-const MAX_STEPS_PER_TURN      = 3;
+const MAX_STEPS_PER_TURN      = 5;
 const ARRIVAL_THRESHOLD       = 0.5;
 const AGENT_RADIUS            = 0.2;
 const MAX_TURNS               = 30;
@@ -155,23 +155,38 @@ function SceneCanvas({ agentPos, path, scene, astarPath }: CanvasPropsExtended) 
       }
       ctx.closePath();
       
-      // Wireframe style infill
-      ctx.fillStyle = obj.isDestiny ? "rgba(255, 174, 174, 0.29)" : "rgba(255, 0, 0, 0.27)";
-      ctx.fill();
-      
-      ctx.strokeStyle = obj.isDestiny ? "rgba(255, 94, 94, 0.6)" : "rgba(255, 0, 0, 0.6)";
-      ctx.lineWidth = obj.isDestiny ? 1.5 : 1;
-      ctx.stroke();
+      if (obj.isHidden) {
+        // Hidden obstacle: dark gray fill + dashed orange border (visible to dev, unknown to agent)
+        ctx.fillStyle = "rgba(80, 60, 20, 0.35)";
+        ctx.fill();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = "rgba(255, 160, 0, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        // Wireframe style infill
+        ctx.fillStyle = obj.isDestiny ? "rgba(255, 174, 174, 0.29)" : "rgba(255, 0, 0, 0.27)";
+        ctx.fill();
+        ctx.strokeStyle = obj.isDestiny ? "rgba(255, 94, 94, 0.6)" : "rgba(255, 0, 0, 0.6)";
+        ctx.lineWidth = obj.isDestiny ? 1.5 : 1;
+        ctx.stroke();
+      }
 
       const center = footprintCentroid(obj.footprint);
       const { cx: lcx, cy: lcy } = tc(center.x, center.z);
       const fs = Math.max(8, Math.min(10, scale * 0.18));
       
       ctx.font = `${fs}px monospace`;
-      ctx.fillStyle = obj.isDestiny ? "#ffffff" : "rgba(255,255,255,0.3)";
+      ctx.fillStyle = obj.isHidden
+        ? "rgba(255,160,0,0.5)"
+        : obj.isDestiny ? "#ffffff" : "rgba(255,255,255,0.3)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(obj.label.toUpperCase(), lcx, lcy);
+      ctx.fillText(
+        obj.isHidden ? `[${obj.label.toUpperCase()}]` : obj.label.toUpperCase(),
+        lcx, lcy
+      );
     }
 
     // A* planned path (Dotted fine technical line)
@@ -342,9 +357,10 @@ export default function App() {
   const [path, setPath]             = useState<Point[]>([]);
   const [astarPath, setAstarPath]   = useState<Point[]>([]);
   const [logs, setLogs]             = useState<LogEntry[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
   const [metrics, setMetrics]       = useState<Metrics | null>(null);
   const [running, setRunning]       = useState(false);
-  const [status, setStatus]         = useState<"idle" | "running" | "arrived" | "stuck">("idle");
+  const [status, setStatus]         = useState<"idle" | "running" | "paused" | "arrived" | "stuck">("idle");
   const [turn, setTurn]             = useState(0);
   const [openPrompts, setOpenPrompts] = useState<Set<number>>(new Set());
 
@@ -354,6 +370,7 @@ export default function App() {
 
   const historyRef      = useRef<ChatMessage[]>([]);
   const logsEndRef      = useRef<HTMLDivElement>(null);
+  const isPausedRef = useRef<boolean>(false);
   const waypointIdxRef  = useRef<number>(1); // start at 1: index 0 is agent start
   const sessionRef      = useRef<{
     scene: string; metrics: Metrics; logs: LogEntry[]; path: Point[];
@@ -395,6 +412,14 @@ export default function App() {
     setAstarPath([]);
     setLogs([]);
     setTurn(0);
+    setIsPaused(false);
+    isPausedRef.current = false;
+
+    const waitIfPaused = async () => {
+      while (isPausedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    };
 
     historyRef.current = buildInitialMessages(SYSTEM_PROMPT);
 
@@ -422,8 +447,15 @@ export default function App() {
     log("system", ` Cena: "${scene.name}" | Início (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)}) → Destino (${doorCenter.x.toFixed(1)}, ${doorCenter.z.toFixed(1)})`);
 
     // ── STEP 1: A* pre-planning ─────────────────────────────────────
-    log("planner", `Calculando rota A*…`);
-    const grid = buildOccupancyGrid(scene, AGENT_RADIUS, GRID_RESOLUTION);
+    // A* only knows about visible objects — hidden obstacles are unknown to the planner.
+    
+    let visibleScene = { ...scene, objects: scene.objects.filter(o => !o.isHidden) };
+    const discoveredHiddenLabels = new Set<string>();
+    
+    const hiddenCount  = scene.objects.filter(o => o.isHidden && !o.isDestiny).length;
+
+    log("planner", `Calculando rota A*… (${hiddenCount} obstáculo(s) oculto(s) excluído(s) do plano)`);
+    const grid = buildOccupancyGrid(visibleScene, AGENT_RADIUS, GRID_RESOLUTION);
     const rawPath = aStarGrid(pos, doorCenter, grid);
 
     let plannedPath: Point[] = [];
@@ -465,21 +497,21 @@ export default function App() {
         stuckWarningStr = buildStuckWarning(navStateRef.current, pos, scene, PARAMS.STEP_SIZE, PARAMS.AGENT_RADIUS);
         log("warn", `⚠️ PRESO por ${navStateRef.current.stuckCounter} turnos. Gerando aviso de escape…`);
 
-        // Re-run A* from current position when stuck to get a fresh route
-        const freshPath = aStarGrid(pos, doorCenter, grid);
-        if (freshPath && freshPath.length > 1) {
-          plannedPath = freshPath;
-          setAstarPath(plannedPath);
-          waypointIdxRef.current = 1;
-          log("planner", `🔄 A* replanejou rota: ${plannedPath.length} waypoints.`);
-        }
+      //   // Re-run A* from current position when stuck to get a fresh route
+      //   const freshPath = aStarGrid(pos, doorCenter, grid);  // grid already excludes hidden
+      //   if (freshPath && freshPath.length > 1) {
+      //     plannedPath = freshPath;
+      //     setAstarPath(plannedPath);
+      //     waypointIdxRef.current = 1;
+      //     log("planner", `🔄 A* replanejou rota: ${plannedPath.length} waypoints.`);
+      //   }
       }
 
       // Build waypoint context for the prompt
       const wpCtx = getCurrentWaypointCtx(pos, plannedPath, waypointIdxRef);
 
-      const ctx    = buildContext(pos, scene);
-      const prompt = buildPrompt(ctx, scene, PARAMS, stuckWarningStr, previousTurnFeedback, wpCtx);
+      const ctx    = buildContext(pos, visibleScene);
+      const prompt = buildPrompt(ctx, visibleScene, PARAMS, stuckWarningStr, previousTurnFeedback, wpCtx, [...discoveredHiddenLabels]);
 
       log("prompt", prompt);
 
@@ -514,17 +546,47 @@ export default function App() {
 
       const turnSteps = (resp.steps || []).slice(0, MAX_STEPS_PER_TURN);
       const executedSteps: Array<{ angle: number; distance: number }> = [];
-      const collisionEvents: Array<{ angle: number; what: string }>   = [];
+      const collisionEvents: Array<{ angle: number; what: string, isHidden: boolean }>   = [];
 
       for (let i = 0; i < turnSteps.length; i++) {
+        await waitIfPaused();
         const s      = turnSteps[i];
         const newPos = stepFromAngle(pos, s.angle, s.distance || STEP_SIZE);
         const col    = checkCollisionSweep(pos, newPos, scene, PARAMS.AGENT_RADIUS);
 
         if (col.hit) {
           collisionsAvoided++;
-          collisionEvents.push({ angle: s.angle, what: col.what! });
+ 
+          const hitObj = scene.objects.find(o => o.label === col.what);
+          const isHiddenHit = hitObj?.isHidden ?? false;
+          collisionEvents.push({ angle: s.angle, what: col.what!, isHidden: isHiddenHit });
           log("warn", `⚠️  Passo ${i + 1}: colisão com "${col.what}" evitada (${s.angle}°)`);
+ 
+          // ★ NEW — Reveal discovered hidden obstacle and immediately replan A*
+          // if (isHiddenHit && hitObj && !discoveredHiddenLabels.has(hitObj.label)) {
+          //   discoveredHiddenLabels.add(hitObj.label);
+ 
+          //   // Incorporate the real footprint into visibleScene so:
+          //   //   (a) the radar scan will show this direction as BLOCKED next turn
+          //   //   (b) A* can plan around it with accurate geometry
+          //   visibleScene = {
+          //     ...visibleScene,
+          //     objects: [...visibleScene.objects, { ...hitObj, isHidden: false }],
+          //   };
+ 
+          //   // Rebuild occupancy grid and replan from current position
+          //   const revealGrid = buildOccupancyGrid(visibleScene, AGENT_RADIUS, GRID_RESOLUTION);
+          //   const revealPath = aStarGrid(pos, doorCenter, revealGrid);
+          //   if (revealPath && revealPath.length > 1) {
+          //     plannedPath = revealPath;
+          //     setAstarPath(plannedPath);
+          //     waypointIdxRef.current = 1;
+          //     log("planner", `🗺️ "${hitObj.label}" revelado! A* replanejou: ${plannedPath.length} waypoints.`);
+          //   } else {
+          //     log("warn", `⚠️ A* não encontrou rota alternativa após revelar "${hitObj.label}".`);
+          //   }
+          // }
+ 
           break;
         }
 
@@ -597,6 +659,16 @@ export default function App() {
     sessionRef.current = null;
   };
 
+  const togglePause = () => {
+    setIsPaused(prev => {
+      const next = !prev;
+      isPausedRef.current = next;
+      // Atualiza o status visual lá no Header
+      setStatus(next ? "paused" : "running");
+      return next;
+    });
+  };
+
   const togglePrompt = useCallback((id: number) => {
     setOpenPrompts(prev => {
       const next = new Set(prev);
@@ -608,6 +680,7 @@ export default function App() {
  const ST = {
     idle:    ["STANDBY", "#71717a"],
     running: ["PROCESSING...", "#ffffff"],
+    paused: ["PAUSED", "#ffffff"],
     arrived: ["TARGET ACQUIRED", "#ffffff"],
     stuck:   ["SYSTEM CRITICAL / STUCK", "#ffffff"],
   }[status] ?? ["UNKNOWN", "#71717a"];
@@ -722,6 +795,7 @@ export default function App() {
               ["PROXIMITY RADAR",    agentPos ? `${dist2D(agentPos, doorCenter).toFixed(2)}m` : "VOID"],
               ["HISTORIC STEPS",     String(path.length - 1)],
               ["SYSTEM TIME-STEP",   turn ? `CYCLE_${turn}` : "IDLE"],
+              ["HIDDEN OBSTACLES",   String(scene.objects.filter(o => o.isHidden && !o.isDestiny).length)],
             ].map(([k, v]) => (
               <div key={k} style={{
                 background: "#18181b",
@@ -746,6 +820,20 @@ export default function App() {
             }}>
               {running ? "|| IN_PROGRESS" : ">> INITIALIZE SYSTEM"}
             </button>
+
+            {/* NOVO BOTÃO DE PAUSE */}
+            <button onClick={togglePause} disabled={!running || status === "arrived" || status === "stuck"} style={{
+              flex: 1, padding: "8px",
+              background: isPaused ? "#ffffff" : "transparent",
+              border: "1px solid #ffffff",
+              color: isPaused ? "#09090b" : "#ffffff",
+              fontSize: "10px", fontWeight: "bold", 
+              cursor: (!running || status === "arrived" || status === "stuck") ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+            }}>
+              {isPaused ? "▶ CONTINUE" : "⏸ PAUSE"}
+            </button>
+
             <button onClick={handleReset} disabled={running} style={{
               padding: "8px 12px",
               background: "transparent",

@@ -131,9 +131,9 @@ export function buildTurnFeedback(
   turn: number,
   executedSteps: Array<{ angle: number; distance: number }>,
   finalPos: { x: number; z: number },
-  collisionEvents: Array<{ angle: number; what: string }>,
+  collisionEvents: Array<{ angle: number; what: string; isHidden: boolean }>,
   distToDoor: string,
-  plannedReasoning?: string,   // ← novo parâmetro
+  plannedReasoning?: string,
 ): string {
   const parts: string[] = [
     `## Turn ${turn} Result`,
@@ -146,13 +146,27 @@ export function buildTurnFeedback(
     parts.push(`- Executed: ${executedSteps.map(s => `${s.angle}°/${s.distance.toFixed(1)}m`).join(", ")}`);
   }
 
-  if (collisionEvents.length > 0) {
-    parts.push(`- ⚠️ Collisions blocked: ${collisionEvents.map(c => `${c.angle}° hit "${c.what}"`).join(", ")}`);
+  const knownHits   = collisionEvents.filter(c => !c.isHidden);
+  const unknownHits = collisionEvents.filter(c => c.isHidden);
+
+  if (knownHits.length > 0) {
+    parts.push(`- ⚠️ Blocked by known obstacles: ${knownHits.map(c => `${c.angle}° hit "${c.what}"`).join(", ")}`);
     if (plannedReasoning) {
       parts.push(`- Your plan was: "${plannedReasoning}"`);
       parts.push(`- That plan FAILED — the obstacle was not avoided. Revise your strategy.`);
     }
-  } else if (plannedReasoning) {
+  }
+
+  if (unknownHits.length > 0) {
+    parts.push(`- 🚧 UNKNOWN OBSTACLE DETECTED at: ${unknownHits.map(c => `${c.angle}°`).join(", ")}`);
+    parts.push(`- This obstacle was NOT on your map. It is a permanent physical barrier — do NOT retry that direction.`);
+    parts.push(`- Plan a detour around it to continue toward your waypoint.`);
+    if (plannedReasoning) {
+      parts.push(`- Your plan was: "${plannedReasoning}" — revise it completely.`);
+    }
+  }
+
+  if (collisionEvents.length === 0 && plannedReasoning) {
     parts.push(`- Your plan was: "${plannedReasoning}" — executed successfully.`);
   }
 

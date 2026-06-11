@@ -2,7 +2,7 @@ import type { Point, Scene, NavParams } from "../types";
 import { angleToTarget, checkCollisionSweep, dist2D, footprintCentroid, stepFromAngle, pointInPolygon } from '../utils/polygons'
 
 // ═══════════════════════════════════════════════════════════════════
-// CONTEXTO + PROMPT
+// CONTEXT + PROMPT
 // ═══════════════════════════════════════════════════════════════════
 
 export function buildContext(agentPos: Point, scene: Scene) {
@@ -39,66 +39,103 @@ export function buildAsciiMap(agentPos: Point, scene: Scene, gridSize = 20): str
  
   const clamp = (v: number) => Math.max(0, Math.min(gridSize - 1, v));
  
-  // 1. Plot Obstacles and Door
   for (const obj of objects) {
     const ch = obj.isDestiny ? "D" : "█";
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         const wx = (c / (gridSize - 1)) * room.w;
         const wz = (r / (gridSize - 1)) * room.d;
-        // Assuming pointInPolygon is available in this scope
         if (pointInPolygon(wx, wz, obj.footprint)) grid[r][c] = ch;
       }
     }
   }
  
-  // 2. Plot Agent
   const agentCol = clamp(Math.round((agentPos.x / room.w) * (gridSize - 1)));
   const agentRow = clamp(Math.round((agentPos.z / room.d) * (gridSize - 1)));
   grid[agentRow][agentCol] = "A";
  
-  // 3. Build rows with Z-axis labels (Left side)
   const rows = grid.map((row, i) => {
     const zLabel = ((i / (gridSize - 1)) * room.d).toFixed(1).padStart(4);
     return `${zLabel} │${row.join("")}│`;
   });
  
-  // 4. Build X-axis labels (Bottom)
-  // We use modulo 10 so numbers >= 10 don't break the 1-character-per-column spacing.
   const xLabels = Array.from({ length: gridSize }, (_, i) => {
     const val = Math.round((i / (gridSize - 1)) * room.w);
     return (val % 10).toString();
   }).join("");
  
-  // 5. Assemble final ASCII map
   return [
     `       ╔${"═".repeat(gridSize)}╗`,
-    ...rows, // Removed the map() that was destroying the first row's label
+    ...rows,
     `       ╚${"═".repeat(gridSize)}╝`,
     `        ${xLabels}`,
     `        W (x=0) → E (x=${room.w})  |  N (z=0) → S (z=${room.d})`,
-    `Legend: A=agent  D=door  █=obstacle  ·=free`, // Removed waypoints to avoid confusing the LLM
+    `Legend: A=agent  D=door  █=obstacle  ·=free`,
   ].join("\n");
 }
- 
-export function buildDirectionScan(pos: { x: number; z: number }, scene: Scene, params: NavParams): string {
-  const angles = [0, 45, 90, 135, 180, 225, 270, 315];
+
+/**
+ * Enhanced multi-step radar scan.
+ *
+ * For each of the 8 cardinal/diagonal directions, simulates up to
+ * MAX_STEPS_PER_TURN consecutive steps and reports how many are free
+ * before hitting an obstacle. This lets the LLM plan exactly how many
+ * steps it can safely take in a given direction without colliding.
+ *
+ * Example output:
+ *   90° (E): free×4+ | after 4 steps: dist=3.20m (+1.80m progress)
+ *   135° (SE): free×2 then BLOCKED by "Sofa" | after 2 steps: dist=4.10m (+0.90m progress)
+ *   180° (S): BLOCKED immediately by "Wall"
+ */
+export function buildDirectionScan(
+  pos: { x: number; z: number },
+  scene: Scene,
+  params: NavParams,
+  blockedByHidden: Set<number> = new Set(),
+): string {
+  const ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+  const LABELS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
   const door = scene.objects.find(o => o.isDestiny)!;
   const doorCenter = footprintCentroid(door.footprint);
+  const distFromStart = dist2D(pos, doorCenter);
 
-  const results = angles.map(angle => {
-    const newPos = stepFromAngle(pos, angle, params.STEP_SIZE);
-    const col = checkCollisionSweep(pos, newPos, scene, params.AGENT_RADIUS);
-    const distBefore = dist2D(pos, doorCenter);
-    const distAfter = dist2D(newPos, doorCenter);
-    const delta = distBefore - distAfter;
+  const lines = ANGLES.map((angle, idx) => {
+    let cursor = { ...pos };
+    let freeCount = 0;
+    let blockedBy: string | null = null;
 
-    return `  ${String(angle).padStart(3)}° (${['N','NE','E','SE','S','SW','W','NW'][angles.indexOf(angle)]}): ${
-      col.hit
-        ? `BLOCKED by "${col.what}"`
-        : `free → dist ${distAfter.toFixed(2)}m (${delta > 0 ? '+' : ''}${delta.toFixed(2)}m progress)`
-    }`;
-  }).join('\n');
+    // Simulate up to MAX_STEPS_PER_TURN steps in this direction
+    for (let step = 0; step < params.MAX_STEPS_PER_TURN; step++) {
+      const nextPos = stepFromAngle(cursor, angle, params.STEP_SIZE);
+      const col = checkCollisionSweep(cursor, nextPos, scene, params.AGENT_RADIUS);
+      if (col.hit) {
+        blockedBy = col.what ?? "obstacle";
+        break;
+      }
+      freeCount++;
+      cursor = nextPos;
+    }
 
-  return `## Direction Scan (next 0.5m step)\n${results}`;
+    const distAfter = dist2D(cursor, doorCenter);
+    const delta = distFromStart - distAfter;
+    const progressStr = `dist=${distAfter.toFixed(2)}m (${delta >= 0 ? '+' : ''}${delta.toFixed(2)}m)`;
+    const label = `${String(angle).padStart(3)}° (${LABELS[idx]})`;
+
+    if (freeCount === 0) {
+      return `  ${label}: BLOCKED immediately by "${blockedBy}"`;
+    } else if (blockedBy) {
+      return `  ${label}: free×${freeCount} then BLOCKED by "${blockedBy}" | after ${freeCount} steps: ${progressStr}`;
+    } else if (blockedByHidden.has(angle)) {
+      return `  ${label}: BLOCKED immediately by "unknown obstacle"`;
+    } else {
+      return `  ${label}: free×${freeCount}+ | after ${freeCount} steps: ${progressStr}`;
+    }
+  });
+
+  return [
+    `## Direction scan — each column = consecutive ${params.STEP_SIZE}m steps before hitting obstacle`,
+    `## "free×N" = you can safely take up to N steps. Plan your steps array accordingly.`,
+    ...lines,
+  ].join("\n");
 }

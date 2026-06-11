@@ -342,9 +342,10 @@ export default function App() {
   const [path, setPath]             = useState<Point[]>([]);
   const [astarPath, setAstarPath]   = useState<Point[]>([]);
   const [logs, setLogs]             = useState<LogEntry[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
   const [metrics, setMetrics]       = useState<Metrics | null>(null);
   const [running, setRunning]       = useState(false);
-  const [status, setStatus]         = useState<"idle" | "running" | "arrived" | "stuck">("idle");
+  const [status, setStatus]         = useState<"idle" | "running" | "paused" | "arrived" | "stuck">("idle");
   const [turn, setTurn]             = useState(0);
   const [openPrompts, setOpenPrompts] = useState<Set<number>>(new Set());
 
@@ -354,6 +355,7 @@ export default function App() {
 
   const historyRef      = useRef<ChatMessage[]>([]);
   const logsEndRef      = useRef<HTMLDivElement>(null);
+  const isPausedRef = useRef<boolean>(false);
   const waypointIdxRef  = useRef<number>(1); // start at 1: index 0 is agent start
   const sessionRef      = useRef<{
     scene: string; metrics: Metrics; logs: LogEntry[]; path: Point[];
@@ -395,6 +397,14 @@ export default function App() {
     setAstarPath([]);
     setLogs([]);
     setTurn(0);
+    setIsPaused(false);
+    isPausedRef.current = false;
+
+    const waitIfPaused = async () => {
+      while (isPausedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    };
 
     historyRef.current = buildInitialMessages(SYSTEM_PROMPT);
 
@@ -517,6 +527,7 @@ export default function App() {
       const collisionEvents: Array<{ angle: number; what: string }>   = [];
 
       for (let i = 0; i < turnSteps.length; i++) {
+        await waitIfPaused();
         const s      = turnSteps[i];
         const newPos = stepFromAngle(pos, s.angle, s.distance || STEP_SIZE);
         const col    = checkCollisionSweep(pos, newPos, scene, PARAMS.AGENT_RADIUS);
@@ -597,6 +608,16 @@ export default function App() {
     sessionRef.current = null;
   };
 
+  const togglePause = () => {
+    setIsPaused(prev => {
+      const next = !prev;
+      isPausedRef.current = next;
+      // Atualiza o status visual lá no Header
+      setStatus(next ? "paused" : "running");
+      return next;
+    });
+  };
+
   const togglePrompt = useCallback((id: number) => {
     setOpenPrompts(prev => {
       const next = new Set(prev);
@@ -608,6 +629,7 @@ export default function App() {
  const ST = {
     idle:    ["STANDBY", "#71717a"],
     running: ["PROCESSING...", "#ffffff"],
+    paused: ["PAUSED", "#ffffff"],
     arrived: ["TARGET ACQUIRED", "#ffffff"],
     stuck:   ["SYSTEM CRITICAL / STUCK", "#ffffff"],
   }[status] ?? ["UNKNOWN", "#71717a"];
@@ -746,6 +768,20 @@ export default function App() {
             }}>
               {running ? "|| IN_PROGRESS" : ">> INITIALIZE SYSTEM"}
             </button>
+
+            {/* NOVO BOTÃO DE PAUSE */}
+            <button onClick={togglePause} disabled={!running || status === "arrived" || status === "stuck"} style={{
+              flex: 1, padding: "8px",
+              background: isPaused ? "#ffffff" : "transparent",
+              border: "1px solid #ffffff",
+              color: isPaused ? "#09090b" : "#ffffff",
+              fontSize: "10px", fontWeight: "bold", 
+              cursor: (!running || status === "arrived" || status === "stuck") ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+            }}>
+              {isPaused ? "▶ CONTINUE" : "⏸ PAUSE"}
+            </button>
+
             <button onClick={handleReset} disabled={running} style={{
               padding: "8px 12px",
               background: "transparent",
